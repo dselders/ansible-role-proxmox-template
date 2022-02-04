@@ -1,0 +1,12 @@
+---
+- name: Base tasks
+  include_tasks: base.yml
+
+- name: "{{ ansible_os_family }} OS Specific tasks"
+  include_tasks: "{{ ansible_os_family }}.yml"
+
+- name: Cloud-init specific tasks
+  include_tasks: cloud-init.yml
+
+- name: Clean up
+  include_tasks: cleanup.yml

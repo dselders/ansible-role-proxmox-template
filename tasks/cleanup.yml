@@ -1,0 +1,84 @@
+---
+- name: Cleanup | Check if /etc/machine-id exists
+  stat:
+    path: /etc/machine-id
+  register: _machine_id
+
+- name: Cleanup | Clearing /etc/machine-id
+  copy:
+    content: ""
+    dest: /etc/machine-id
+  become: true
+  when: _machine_id.stat.exists | bool
+
+- name: Cleanup | Finding SSH key files to clean
+  find:
+    paths: /etc/ssh
+    patterns: ssh_host_*
+  register: _ssh_host_keys
+
+- name: Cleanup | Cleaning up SSH key files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  become: true
+  loop: "{{ _ssh_host_keys.files }}"
+
+- name: Cleanup | Cleaning up apt
+  command: "{{ item }}"
+  become: true
+  loop:
+    - apt-get autoremove -y
+    - apt-get clean -y
+    - apt-get autoclean -y
+
+- name: Cleanup | Finding temp files to clean
+  find:
+    paths:
+      - /tmp
+      - /var/tmp
+    recurse: true
+  register: _temp_files
+
+- name: Cleanup | Cleaning up temp files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  become: true
+  loop: "{{ _temp_files.files }}"
+
+- name: Cleanup | Finding log files to clean in /var/log
+  find:
+    paths: /var/log
+    patterns: "*.log"
+    recurse: true
+  become: true
+  register: _log_files
+
+- name: Cleanup | Cleaning up log files in /var/log
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  become: true
+  loop: "{{ _log_files.files }}"
+
+- name: Cleanup | Cleaning up random files/directories
+  file:
+    path: "{{ item }}"
+    state: absent
+  become: true
+  loop:
+    - /etc/udev/rules.d/70-persistent-net.rules
+    - /var/cache/yum
+    - /var/lib/misc/random-seed
+    - /var/lib/systemd/random-seed
+
+- name: Cleanup | Zeroing out free space to save space in the final image
+  shell: |
+    dd if=/dev/zero of=/EMPTY bs=1M
+    rm -f /EMPTY
+    sync
+    sync
+    sync
+  become: true
+  failed_when: false

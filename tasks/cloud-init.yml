@@ -1,0 +1,35 @@
+---
+- name: Cloud-Init | Installing cloud-init
+  package:
+    name: cloud-init
+    state: present
+  become: true
+
+- name: Cloud-Init | Cleaning up Ubuntu cloud-init
+  file:
+    path: "/etc/cloud/cloud.cfg.d/{{ item }}"
+    state: absent
+  become: true
+  loop:
+    - 99-installer.cfg
+    - subiquity-disable-cloudinit-networking.cfg
+  when:
+    - ansible_distribution == "Ubuntu"
+    - ansible_distribution_version is version('20.04', '>=')
+
+- name: Cloud-Init | Configuring /etc/cloud/cloud.cfg.d/99-installer.cfg
+  copy:
+    content: |
+      datasource_list: [ None ]
+    dest: /etc/cloud/cloud.cfg.d/99-installer.cfg
+    mode: 0644
+  become: true
+  when:
+    - ansible_distribution == "Ubuntu"
+    - ansible_distribution_version is version('20.04', '>=')
+
+- name: Cloud-Init | Cleaning up cloud-init
+  block:
+    - name: Cleanup | Attempting cloud-init clean
+      command: cloud-init clean -s -l
+      become: true
